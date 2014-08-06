@@ -1,0 +1,22 @@
+{
+    "motors": {
+        "left": true,
+        "right": true
+    },
+
+    "leds": false,
+
+    "sensors": {
+        "acc": {
+            "X": true,
+            "Y": true,
+            "Z": true
+        },
+
+        "gyr": {
+            "Y": true,
+            "P": true,
+            "R": true
+        }
+    }
+}

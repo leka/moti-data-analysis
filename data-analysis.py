@@ -1,4 +1,5 @@
 import sys
+import json
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
@@ -21,7 +22,7 @@ class LedData:
 class SensorsData:
     def __init__(self, sensors):
         self.accel_x, self.accel_y, self.accel_z = sensors[:3]
-        self.gyro_x, self.gyro_y, self.gyro_z = sensors[3:]
+        self.gyro_y, self.gyro_p, self.gyro_r = sensors[3:]
 
 
 class Data:
@@ -45,8 +46,8 @@ def read_data(filepath):
     with open(filepath) as f:
         i = 0
         while True:
-            infos = [f.readline().rstrip('\n') for _ in range(19)]
-            time, motors, leds, sensors = infos[:2], infos[2:7], infos[7:12], infos[12:]
+            infos = [f.readline().split(',') for _ in range(4)]
+            time, motors, leds, sensors = infos
 
             if len(time) == 0 or time[0] == '':
                 break
@@ -79,42 +80,87 @@ def find_value(time, data):
     return items[a]
 
 
-def plot(data, mask):
+def plot(data, config):
     items = data.items()
 
     t = [item[0] for item in items]
 
-    if mask & PLOT_MOTORS:
+    motors, leds, sensors = config['motors'], config['leds'], config['sensors']
+
+    # Motors
+    if motors['right'] or motors['left']:
         right_speed = [item[1].motor_data.right_speed for item in items]
         left_speed = [item[1].motor_data.left_speed for item in items]
 
-        plt.figure(PLOT_MOTORS)
+        plt.figure(1)
         plt.xlabel('time (ms)')
         plt.ylabel('speed')
-        plt.plot(t, right_speed, label='Right motor')
-        plt.plot(t, left_speed, label='Left motor')
+
+        if motors['right']:
+            plt.plot(t, right_speed, label='Right motor')
+        
+        if motors['left']:
+            plt.plot(t, left_speed, label='Left motor')
         plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=4,
                    ncol=2, mode="expand", borderaxespad=0.)
         plt.savefig('plot/motors.png', format='png')
 
-    if mask & PLOT_LEDS:
+    # Leds
+    if leds:
         pass
 
-    if mask & PLOT_SENSORS:
+    # Accelerometer
+    acc = sensors['acc']
+    if acc['X'] or acc['Y'] or acc['Z']:
         accel_x = [item[1].sensors_data.accel_x for item in items]
         accel_y = [item[1].sensors_data.accel_y for item in items]
         accel_z = [item[1].sensors_data.accel_z for item in items]
 
-        plt.figure(PLOT_SENSORS)
+        plt.figure(2)
         plt.subplot(212)
         plt.xlabel('time (ms)')
         plt.ylabel('amplitude')
-        plt.plot(t, accel_x, label="AccX")
-        plt.plot(t, accel_y, label="AccY")
-        plt.plot(t, accel_z, label="AccZ")
-        plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=4,
-                   ncol=2, mode="expand", borderaxespad=0.)
-        plt.savefig('plot/sensors.png', format='png')
+
+        if acc['X']:
+            plt.plot(t, accel_x, label="AccX")
+        
+        if acc['Y']:
+            plt.plot(t, accel_y, label="AccY")
+        
+        if acc['Z']:
+            plt.plot(t, accel_z, label="AccZ")
+    
+        plt.legend(bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc=4,
+                   ncol=2, mode="expand", borderaxespad=0.0)
+        plt.savefig('plot/accelerometer.png', format='png')
+
+    # Gyroscope
+    gyr = sensors['gyr']
+    if gyr['Y'] or gyr['P'] or gyr['R']:
+        gyr_y = [item[1].sensors_data.gyro_y for item in items]
+        gyr_p = [item[1].sensors_data.gyro_p for item in items]
+        gyr_r = [item[1].sensors_data.gyro_r for item in items]
+
+        plt.figure(3)
+        plt.subplot(211)
+        plt.xlabel('time (ms)')
+        plt.ylabel('amplitude')
+
+        if gyr['Y']:
+            plt.plot(t, gyr_y, label="GyrY")
+        
+        if gyr['P']:
+            plt.plot(t, gyr_p, label="GyrP")
+        
+        if gyr['R']:
+            plt.plot(t, gyr_r, label="GyrR")
+    
+        plt.legend(bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc=4,
+                   ncol=2, mode="expand", borderaxespad=0.0)
+        plt.savefig('plot/gyroscope.png', format='png')
+
+    plt.show()
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -123,6 +169,9 @@ if __name__ == '__main__':
 
     input_file = sys.argv[1]
 
+    with open('config.json') as config_file:
+        config = json.loads(config_file.read())
+
     data = read_data(input_file)
 
-    plot(data, PLOT_MOTORS + PLOT_SENSORS)
+    plot(data, config)
